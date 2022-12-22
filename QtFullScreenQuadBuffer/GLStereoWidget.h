@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QGLWidget>
+#include <qtimer.h>
 #include <qvector3d.h>
 
 class GLStereoWidget : public QGLWidget
@@ -29,13 +30,22 @@ protected:
 
 	void drawFrame(QColor color, float offset = 0.0f);
 	void drawRectangles();
+	void idleUpdate();
 protected slots:
-	void update();
+	void updatePos();
+	void updateFps();
 private:
 	QStringList info;
 	bool fullScreen;
 	bool stereo;
+	
+	QTimer idleTimer;
 
+	QTimer fpsTimer;
+	float fps;
+	float frameCount;
+
+	QTimer posTimer;
 	QVector3D pos;
 	QVector3D velocity;
 };

@@ -4,20 +4,25 @@
 #include "qtimer.h"
 #include "qmatrix4x4.h"
 
-static int update_interval = 30;
-static float vel_factor = 0.5f;
+const static int interval_updating_position = 15;
+const static float vel_factor = 0.5f;
 
 GLStereoWidget::GLStereoWidget(QWidget *parent, const QGLFormat &format)
 	: QGLWidget(format, parent)
 	, fullScreen(false)
 	, stereo(format.stereo())
+	, fps(0)
+	, frameCount(0)
 {
 	setFocusPolicy(Qt::ClickFocus);
 
-	QTimer* timer = new QTimer(this);
-	timer->setInterval(update_interval);
-	connect(timer, &QTimer::timeout, this, &GLStereoWidget::update);
-	timer->start();
+	connect(&posTimer, &QTimer::timeout, this, &GLStereoWidget::updatePos);
+	posTimer.start(interval_updating_position);
+
+	connect(&idleTimer, &QTimer::timeout, this, &GLStereoWidget::updateGL);
+
+	connect(&fpsTimer, &QTimer::timeout, this, &GLStereoWidget::updateFps);
+	fpsTimer.start(1000);
 }
 
 GLStereoWidget::~GLStereoWidget()
@@ -63,6 +68,13 @@ void GLStereoWidget::paintGL()
 	{
 		drawFrame(red, 0.0f);
 	}
+
+	idleUpdate();
+}
+
+void GLStereoWidget::idleUpdate()
+{
+	idleTimer.start(0);
 }
 
 void GLStereoWidget::keyPressEvent(QKeyEvent *event)
@@ -128,17 +140,27 @@ void GLStereoWidget::setInfo(QString text)
 	info = text.split("\n");
 }
 
-void GLStereoWidget::update()
+void GLStereoWidget::updatePos()
 {
 	if (!velocity.isNull())
 	{
-		pos += velocity * update_interval * vel_factor * 0.001f;
+		pos += velocity * vel_factor * interval_updating_position * 0.001f;
 		updateGL();
 	}
 }
 
+void GLStereoWidget::updateFps()
+{
+	const static float factor = 0.9;
+	fps *= (1 - factor);
+	fps += frameCount * factor;
+	frameCount = 0;
+}
+
 void GLStereoWidget::updateInfo()
 {
+	frameCount += 1.0f;
+
 	QStringList _info;
 	_info.append(tr("NativeWindow: %0").arg(window() == this));
 	_info.append(tr("FullScreen: %0").arg(fullScreen));
@@ -160,6 +182,8 @@ void GLStereoWidget::updateInfo()
 	_info.append(tr("GLWidget: %0").arg(glInfo));
 	
 	_info.append(tr("Camera: %0, %1").arg(pos.x()).arg(pos.y()));
+	_info.append(tr("FPS: %0").arg(fps));
+
 	info = _info;
 }
 
